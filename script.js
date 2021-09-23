@@ -3,13 +3,18 @@ const gameBoard = (() => {
 
     const getTileValue = (index) => _board[index];
 
+    /**
+     * @param {*} index of the tile
+     * @param {*} symbol to be filled with
+     * @returns bool to indicate that
+     * player turn should be changed
+     */
     const setTileValue = (index, symbol) => {
         if (_isEmptyTile(_board[index])) {
             _board[index] = symbol;
             return true;
-        } else {
-            return false;
         }
+        return false;
     };
 
     const hasEmptyTile = () => {
@@ -21,25 +26,15 @@ const gameBoard = (() => {
         return tile === undefined;
     };
 
-    const _clearBoard = () => {
+    const clearBoard = () => {
         _board.fill(undefined);
-    };
-
-    const populateBoard = () => {
-        _board.fill("X");
-    };
-
-    const restartGame = () => {
-        _clearBoard();
-        displayController.updateBoard();
     };
 
     return {
         getTileValue,
         setTileValue,
         hasEmptyTile,
-        restartGame,
-        populateBoard
+        clearBoard
     };
 
 })();
@@ -74,6 +69,8 @@ const gameController = (() => {
     // playerX begins first
     const players = [Player("X", true), Player("O", false)];
 
+    // if any of these are filled with the same symbol,
+    // the game has been won
     const _arrayWinCondition = [
         [0, 1, 2],
         [3, 4, 5],
@@ -85,43 +82,20 @@ const gameController = (() => {
         [2, 4, 6]
     ];
 
+    const getPlayers = () => players;
+
     const _getCurrentPlayer = () => {
         for (const player of players) {
             if ( player.getPlayerTurn() ) { return player; }
         }
     };
 
-    const _changeCurrentPlayer = () => {
+    const changeCurrentPlayer = () => {
         players.forEach(player => player.setPlayerTurn());
     };
 
     const getCurrentPlayerSymbol = () => {
         return _getCurrentPlayer().getPlayerSymbol();
-    };
-
-    const getPlayers = () => players;
-
-    const _initDOMs = () => {
-        const _btnRestart = document.querySelector(".btn-restart");
-        _btnRestart.addEventListener('click', () => {
-            gameBoard.restartGame();
-        });
-
-        const _tiles = document.querySelectorAll(".tile");
-        _tiles.forEach(tile => tile.addEventListener('click', () => {
-            let index = tile.getAttribute("data-index");
-
-            // Change player turn only if prev player made a legal move
-            if (gameBoard.setTileValue(index, getCurrentPlayerSymbol())) {
-                _changeCurrentPlayer();
-            }
-
-            displayController.updateBoard();
-            displayController.updateCurrentPlayer();
-
-            _checkGameState();
-            
-        }));
     };
 
     const _checkWinCondition = (symbol, sequence) => {
@@ -138,7 +112,7 @@ const gameController = (() => {
         return !gameBoard.hasEmptyTile();
     };
 
-    const _checkGameState = () => {
+    const checkGameState = () => {
         for (const winCondition of _arrayWinCondition) {
             let symbolSequence = winCondition.reduce(
                 (sequence, tile) => sequence += gameBoard.getTileValue(tile), ''
@@ -149,20 +123,19 @@ const gameController = (() => {
                 winner.addToVictories();
                 displayController.updateScore();
                 displayController.notifyWinner(winner);
-                gameBoard.restartGame();
-
+                displayController.restartGame();
             }
+        }
 
-            if (_checkIfDraw()) {
-                displayController.notifyDraw();
-                gameBoard.restartGame();
-            }
+        if (_checkIfDraw()) {
+            displayController.notifyDraw();
+            displayController.restartGame();
         }
     };
 
-    _initDOMs();
-
     return {
+        changeCurrentPlayer,
+        checkGameState,
         getPlayers,
         getCurrentPlayerSymbol
     };
@@ -172,6 +145,38 @@ const displayController = (() => {
     const _tiles = document.querySelectorAll(".tile");
     const _currentPlayer = document.querySelector(".current-player");
     const _scores = document.querySelectorAll(".player-score");
+    const _popup = document.querySelector("#popup");
+    const _result = document.querySelector("#result");
+    const _span = document.querySelector(".close");
+
+    (function () {
+        const _btnRestart = document.querySelector(".btn-restart");
+        _btnRestart.addEventListener('click', () => {
+            restartGame();
+        });
+    })();
+
+    (function () {
+        _tiles.forEach(tile => tile.addEventListener('click', () => {
+            let index = tile.getAttribute("data-index");
+
+            // Change player turn only if prev player made a legal move
+            if (gameBoard.setTileValue(index, gameController.getCurrentPlayerSymbol())) {
+                gameController.changeCurrentPlayer();
+            }
+
+            updateBoard();
+            updateCurrentPlayer();
+
+            gameController.checkGameState();
+            
+        }));
+    })();
+
+    const restartGame = () => {
+        gameBoard.clearBoard();
+        updateBoard();
+    };
 
     const updateBoard = () => {
         for (let i = 0; i < _tiles.length; i++) {
@@ -192,8 +197,8 @@ const displayController = (() => {
                         `Player ${playerId}'s score: `;
                     score.appendChild(playerScore);
                 }
-            })
-        })
+            });
+        });
     };
 
     const updateCurrentPlayer = () => {
@@ -201,52 +206,55 @@ const displayController = (() => {
     };
 
     const notifyDraw = () => {
-        alert(`It's a draw!`);
-    };
-
-    const notifyWinner = (player) => {
-        _toggleTiles();
-        _popupWinner(player);
+        _popupResult(null);
+        _disableTiles();
         _setPopupClosing();
     };
 
-    const _popupWinner = (player) => {
-        let pWinner = document.querySelector("#winner");
-        pWinner.textContent = `Player ${player.getPlayerSymbol()} has won!`;
+    const notifyWinner = (player) => {
+        _popupResult(player);
+        _disableTiles();
+        _setPopupClosing();
+    };
 
-        let popup = document.querySelector("#popup");
-        popup.classList.add("display");
+    const _popupResult = (player) => {
+        _result.textContent = (player === null) ? 
+            `It's a draw!` : `Player ${player.getPlayerSymbol()} has won!`;
+        
+        _popup.classList.add("display");
     };
 
     const _setPopupClosing = () => {
-        let span = document.querySelector(".close");
-
-        span.addEventListener("click", () => {
-            popup.classList.remove("display");
-            _toggleTiles();
+        _span.addEventListener("click", () => {
+            _popup.classList.remove("display");
+            _enableTiles();
         });
 
         window.addEventListener("click", (e) => {
-            if (e.target == popup) {
-                popup.classList.remove("display");
-                _toggleTiles();
+            if (e.target == _popup) {
+                _popup.classList.remove("display");
+                _enableTiles();
             }
         });
     };
 
-    const _toggleTiles = () => {
-        _tiles.forEach(tile => tile.classList.toggle("disabled"));
+    const _disableTiles = () => {
+        _tiles.forEach(tile => tile.classList.add("disabled"));
+    };
+
+    const _enableTiles = () => {
+        _tiles.forEach(tile => tile.classList.remove("disabled"));
     };
 
     updateCurrentPlayer();
     updateScore();
 
     return {
+        restartGame,
         updateBoard,
         updateScore,
         updateCurrentPlayer,
         notifyWinner,
         notifyDraw
     };
-
 })();
