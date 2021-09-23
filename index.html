@@ -20,24 +20,41 @@
     <title>Tic-Tac-Toe</title>
 </head>
 <body>
+
+    <div id="popup" class="popup">
+        <div class="popup-content">
+          <span class="close">&times;</span>
+          <p id="winner"></p>
+        </div>  
+    </div>
+
+    <div class="top">
+        <h3>Tic-Tac-Toe</h3>
+    </div>
+
     <div id="container">
 
-        <div class="top">
-            <h1>Tic-Tac-Toe</h1>
-        </div>
+        <h5>It's Player <div class="current-player"></div>'s turn.</h5>
 
-        <h3>It's Player <div class="current-player"></div>'s turn.</h3>
+        <div class="main-container">
+            <div class="empty"></div>
 
-        <div class="board">
-            <div class="tile" data-index="0"></div>
-            <div class="tile" data-index="1"></div>
-            <div class="tile" data-index="2"></div>
-            <div class="tile" data-index="3"></div>
-            <div class="tile" data-index="4"></div>
-            <div class="tile" data-index="5"></div>
-            <div class="tile" data-index="6"></div>
-            <div class="tile" data-index="7"></div>
-            <div class="tile" data-index="8"></div>
+            <div class="board">
+                <div class="tile" data-index="0"></div>
+                <div class="tile" data-index="1"></div>
+                <div class="tile" data-index="2"></div>
+                <div class="tile" data-index="3"></div>
+                <div class="tile" data-index="4"></div>
+                <div class="tile" data-index="5"></div>
+                <div class="tile" data-index="6"></div>
+                <div class="tile" data-index="7"></div>
+                <div class="tile" data-index="8"></div>
+            </div>
+
+            <div class="scoreboard">
+                <div class="player-score" data-index="X"></div>
+                <div class="player-score" data-index="O"></div>
+            </div>
         </div>
 
         <button class="btn-restart">Restart</button>

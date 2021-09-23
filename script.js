@@ -4,16 +4,22 @@ const gameBoard = (() => {
     const getTileValue = (index) => _board[index];
 
     const setTileValue = (index, symbol) => {
-        _board[index] = (_isEmptyTile(_board[index])) ? symbol : getTileValue(index);
-    }
+        if (_isEmptyTile(_board[index])) {
+            _board[index] = symbol;
+            return true;
+        } else {
+            return false;
+        }
+    };
 
     const hasEmptyTile = () => {
         return _board.includes(undefined);
-    }
+
+    };
 
     const _isEmptyTile = (tile) => {
         return tile === undefined;
-    }
+    };
 
     const _clearBoard = () => {
         _board.fill(undefined);
@@ -66,7 +72,7 @@ const Player = (symbol, playerTurn) => {
 
 const gameController = (() => {
     // playerX begins first
-    const _players = [Player("X", true), Player("O", false)];
+    const players = [Player("X", true), Player("O", false)];
 
     const _arrayWinCondition = [
         [0, 1, 2],
@@ -80,20 +86,20 @@ const gameController = (() => {
     ];
 
     const _getCurrentPlayer = () => {
-        for (const player of _players) {
-            if (player.getPlayerTurn()) {
-                return player;
-            }
+        for (const player of players) {
+            if ( player.getPlayerTurn() ) { return player; }
         }
     };
 
     const _changeCurrentPlayer = () => {
-        _players.forEach(player => player.setPlayerTurn());
+        players.forEach(player => player.setPlayerTurn());
     };
 
     const getCurrentPlayerSymbol = () => {
         return _getCurrentPlayer().getPlayerSymbol();
     };
+
+    const getPlayers = () => players;
 
     const _initDOMs = () => {
         const _btnRestart = document.querySelector(".btn-restart");
@@ -104,11 +110,17 @@ const gameController = (() => {
         const _tiles = document.querySelectorAll(".tile");
         _tiles.forEach(tile => tile.addEventListener('click', () => {
             let index = tile.getAttribute("data-index");
-            gameBoard.setTileValue(index, getCurrentPlayerSymbol());
-            _changeCurrentPlayer();
+
+            // Change player turn only if prev player made a legal move
+            if (gameBoard.setTileValue(index, getCurrentPlayerSymbol())) {
+                _changeCurrentPlayer();
+            }
+
             displayController.updateBoard();
             displayController.updateCurrentPlayer();
-            checkGameState();
+
+            _checkGameState();
+            
         }));
     };
 
@@ -117,16 +129,16 @@ const gameController = (() => {
     };
 
     const _checkWinner = (sequence) => {
-        for (let player of _players) {
+        for (let player of players) {
             if ( _checkWinCondition(player.getPlayerSymbol(), sequence) ) { return player; }
         }
-    }
+    };
 
     const _checkIfDraw = () => {
         return !gameBoard.hasEmptyTile();
-    }
+    };
 
-    const checkGameState = () => {
+    const _checkGameState = () => {
         for (const winCondition of _arrayWinCondition) {
             let symbolSequence = winCondition.reduce(
                 (sequence, tile) => sequence += gameBoard.getTileValue(tile), ''
@@ -135,6 +147,7 @@ const gameController = (() => {
             let winner = _checkWinner(symbolSequence);
             if (winner) {
                 winner.addToVictories();
+                displayController.updateScore();
                 displayController.notifyWinner(winner);
                 gameBoard.restartGame();
 
@@ -150,14 +163,15 @@ const gameController = (() => {
     _initDOMs();
 
     return {
-        getCurrentPlayerSymbol,
-        checkGameState
-    }
+        getPlayers,
+        getCurrentPlayerSymbol
+    };
 })();
 
 const displayController = (() => {
     const _tiles = document.querySelectorAll(".tile");
     const _currentPlayer = document.querySelector(".current-player");
+    const _scores = document.querySelectorAll(".player-score");
 
     const updateBoard = () => {
         for (let i = 0; i < _tiles.length; i++) {
@@ -165,26 +179,74 @@ const displayController = (() => {
         }
     };
 
+    const updateScore = () => {
+        _scores.forEach(score => {
+            let playerId = score.getAttribute("data-index");
+
+            gameController.getPlayers().forEach(player => {
+                if (player.getPlayerSymbol() === playerId) {
+                    let playerScore = document.createElement('p');
+                    playerScore.textContent = player.getPlayerVictories();
+                    playerScore.classList.add("bold");
+                    score.textContent = 
+                        `Player ${playerId}'s score: `;
+                    score.appendChild(playerScore);
+                }
+            })
+        })
+    };
+
     const updateCurrentPlayer = () => {
         _currentPlayer.textContent = gameController.getCurrentPlayerSymbol();
     };
 
-    const notifyWinner = (player) => {
-        alert(`Player ${player.getPlayerSymbol()} won!`);
-    };
-
     const notifyDraw = () => {
         alert(`It's a draw!`);
-    }
+    };
+
+    const notifyWinner = (player) => {
+        _toggleTiles();
+        _popupWinner(player);
+        _setPopupClosing();
+    };
+
+    const _popupWinner = (player) => {
+        let pWinner = document.querySelector("#winner");
+        pWinner.textContent = `Player ${player.getPlayerSymbol()} has won!`;
+
+        let popup = document.querySelector("#popup");
+        popup.classList.add("display");
+    };
+
+    const _setPopupClosing = () => {
+        let span = document.querySelector(".close");
+
+        span.addEventListener("click", () => {
+            popup.classList.remove("display");
+            _toggleTiles();
+        });
+
+        window.addEventListener("click", (e) => {
+            if (e.target == popup) {
+                popup.classList.remove("display");
+                _toggleTiles();
+            }
+        });
+    };
+
+    const _toggleTiles = () => {
+        _tiles.forEach(tile => tile.classList.toggle("disabled"));
+    };
+
+    updateCurrentPlayer();
+    updateScore();
 
     return {
         updateBoard,
+        updateScore,
         updateCurrentPlayer,
         notifyWinner,
         notifyDraw
-    }
+    };
 
-    // TODO
 })();
-
-displayController.updateCurrentPlayer();
